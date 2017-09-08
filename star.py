@@ -39,6 +39,10 @@ datalogTimestamp = True
 
 SmiteStatus = "| [Operational](http://status.hirezstudios.com#/operational) | [Operational](http://status.hirezstudios.com#/operational) | [Operational](http://status.hirezstudios.com#/operational)"
 PaladinsStatus = "| [Operational](http://status.hirezstudios.com#/operational) | [Operational](http://status.hirezstudios.com#/operational) | [Operational](http://status.hirezstudios.com#/operational)"
+rankingList = ["", "bronze5", "bronze4", "bronze3", "bronze2", "bronze1", "silver5", "silver4", "silver3", "silver2", "silver1", "gold5", "gold4", "gold3", "gold2", "gold1", "platinum5", "platinum4", "platinum3", "platinum2", "platinum1", "diamond5", "diamond4", "diamond3", "diamond2", "diamond1", "master", "grandmaster"]
+rankingListFormatted = ["Qualifying", "Bronze V", "Bronze IV", "Bronze III", "Bronze II", "Bronze I", "Silver V", "Silver IV", "Silver III", "Silver II", "Silver I", "Gold V", "Gold IV", "Gold III", "Gold II", "Gold I", "Platinum V", "Platinum IV", "Platinum III", "Platinum II", "Platinum I", "Diamond V", "Diamond IV", "Diamond III", "Diamond II", "Diamond I", "Master", "Gramdmaster"]
+rankingListShort = ["Q", "BV", "BIV", "BIII", "BII", "BI", "SV", "SIV", "SIII", "SII", "SI", "GV", "GIV", "GIII", "GII", "GI", "PV", "PIV", "PIII", "PII", "PI", "DV", "DIV", "DIII", "DII", "DI", "M", "GM"]
+regionFlagsDictionary = {"North America": "na", "Europe": "eu", "Oceania": "oce", "Brazil": "bra", "Latin America North": "sa", "Southeast Asia": "sea", "China": "chi", "Russia": "rus"}
 
 STATUS_TO_CSS_CLASS_MAP = {
     'Operational' : 'operational',
@@ -50,7 +54,10 @@ STATUS_TO_CSS_CLASS_MAP = {
 
 FLAIRTEXTSUBJECTLINE = ["flairtext", "re: flairtext"]
 TIER5SUBJECTLINE = ["tier5", "re: tier5"]
+LINKACCOUNTSUBJECTLINE = ["accountlink", "re: accountlink", "linkaccount", "re: linkaccount"]
 MASTERYSUBJECTLINE = ["masteryflair", "re: masteryflair"]
+LEVELSUBJECTLINE = ["levelflair", "re: levelflair"]
+COMPETITIVESUBJECTLINE = ["competitiveflair", "re: competitiveflair", "rankedflair", "re: rankedflair", "rankflair", "re: rankflair"]
 DIAMONDSUBJECTLINE = ["diamondflair", "re: diamondflair"]
 SAVEFILESUBJECTLINE = ["savefile", "re: savefile"]
 LOADFILESUBJECTLINE = ["loadfile", "re: loadfile"]
@@ -80,8 +87,17 @@ The promotional period for this flair is over. Please join us again next year fo
 MESSAGE_TIER5_INCORRECT = """
 You have not provided the correct information. Please provide your IGN on the first line and your requested flair text on the second line.
 """
+MESSAGE_ZERO_FLAIR = """
+Please ensure you have a flair equipped before attempting to augment it with mastery, account level, or competitive ranking. You can select a flair from the sidebar.
+"""
 MESSAGE_MASTERY_SUCCESS = """
 You are rank {rank} on {champion}. Your mastery flair was authorised.
+"""
+MESSAGE_LEVEL_SUCCESS = """
+You are level {level}. Your level flair was authorised.
+"""
+MESSAGE_COMPETITIVE_SUCCESS = """
+Your are ranked {rank}. Your competitive flair was authorised.
 """
 MESSAGE_DIAMOND_SUCCESS = """
 You have _number_ woshippers on _god_ on _platform_. Your diamond flair was authorised.
@@ -93,7 +109,15 @@ MESSAGE_DIAMOND_SORRY = """
 You only have _number_ woshippers on _god_ on _platform_. You need at least 1,000 for a Diamond flair.
 """
 MESSAGE_IGN = """
-Your username, '{ign}' was not found in our database. Please be aware that I cannot read some special characters. If you believe this statement is incorrect, please message the moderators for manual verification.
+Your username, '{ign}' was not found in our database. If you believe this statement is incorrect, please message the moderators for manual verification.
+"""
+MESSAGE_LINK_SUCCESS = """
+Your account, `{ign}` was successfully linked.
+
+ID: `{id}`, created `{date}`.
+"""
+MESSAGE_NOT_LINKED = """
+Your reddit account has not been linked to your Paladins account. See [here](https://www.reddit.com/r/DrYoshiyahu/wiki/star/accountlink) for instructions on how to link your accounts.
 """
 MESSAGE_OOPS = """
 Something went wrong! If your account is not hidden, and the syntax for the message was correct, Smite's servers may be down, or they may not recognise the existance of the account.
@@ -102,10 +126,16 @@ MESSAGE_OOPS2 = """
 Something went wrong! Your platform is "_platform_" and your in-game name is "_IGN_". If your account is not hidden, and the syntax for the message was correct, Smite's servers may be down, or they may not recognise the existance of the account.
 """
 MESSAGE_OOPS3 = """
-Something went wrong! You listed your in-game name as {IGN} and your platform as {platform}. If this is correct, Paladins' servers may be having issues, or there may be an issue with special characters in your username. Please contact /u/DrYoshiyahu if you believe this is a mistake.
+Something went wrong! You listed your in-game name as `{IGN}` and your platform as `{platform}`. If this is correct, Paladins' servers may be having issues. Please contact /u/DrYoshiyahu if you believe this is a mistake.
+"""
+MESSAGE_OOPS4 = """
+Something went wrong! Ensure your account is [linked](https://www.reddit.com/r/DrYoshiyahu/wiki/star/accountlink) and try again.
 """
 MESSAGE_MASTERY_WRONGFLAIR = """
 Please check that your current flair includes the image of a {character}. Contact /u/DrYoshiyahu if you believe this is a mistake.
+"""
+MESSAGE_LEVEL_TOO_LOW = """
+Your account level is too low. Please try again when your account is at least level 15.
 """
 MESSAGE_FILE_INCORRECT = """
 You tried to access a file called "_messagebody_". Please try again with either "A", "B", "C", "D", or "E".
@@ -233,6 +263,7 @@ You need to find at least 50 eggs to qualify for the Easter flair.
 
 *By receiving this message, you have automatically redeemed the "Chicken" egg, congratulations!*
 """
+
 def datalog(string, end="\n"):
     openFile = open(DATALOGFILE, "a")
     global datalogTimestamp
@@ -324,7 +355,7 @@ def updateOperationalStatus():
         sub = r.get_subreddit(SUBREDDIT)
         settings = sub.get_settings()
         reduced_description = settings['description'].replace("\n",'')
-        m = re.search('\| *\[.+\]\(http:\/\/status\.hirezstudios\.com#\/.+?\)', reduced_description)
+        m = re.search('\| *\[.+\]\(http:\/\/status\.hirezstudios\.com#\/.+?\)\s+', reduced_description)
         new_statuses = newStatusStr()
         if SUBREDDIT == "Smite":
             global SmiteStatus
@@ -679,7 +710,13 @@ def flairmaildiamond(mauthor, mbody, message):
     try:
         current_flair = r.get_flair(SUBREDDIT, mauthor)
         sep = " "
-        mclass = current_flair['flair_css_class'].split(sep, 1)[0]
+        try:
+            mclass = current_flair['flair_css_class'].split(sep, 1)[0]
+        except:
+            datalog("\tFlair does not exist, writing reply")
+            message.reply(MESSAGE_ZERO_FLAIR)
+            message.mark_as_read()
+            return
         mtext = current_flair['flair_text']
         try:
             searchgod = ""
@@ -969,14 +1006,244 @@ def flairmaildiamond(mauthor, mbody, message):
         message.mark_as_read()
         return
 
+def flairmaillevel(mauthor, mbody, message):
+    try:
+        cur.execute('SELECT * FROM users WHERE NAME=? AND IGN IS NOT NULL', [mauthor])
+        fetched = cur.fetchone()
+        if not fetched:
+            datalog("\tAccount was not linked")
+            message.reply(MESSAGE_NOT_LINKED.format())
+            message.mark_as_read()
+            return
+        else:
+            platform = fetched[2]
+            IGN = fetched[3]
+            message.reply(updatelevelflair(mauthor,platform,IGN,True))
+            message.mark_as_read()
+            return
+    except Exception as e:
+        datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+        message.reply(MESSAGE_OOPS4)
+        message.mark_as_read()
+        return
+
 def flairmailmastery(mauthor, mbody, message):
+    try:
+        cur.execute('SELECT * FROM users WHERE NAME=? AND IGN IS NOT NULL', [mauthor])
+        fetched = cur.fetchone()
+        if not fetched:
+            datalog("\tAccount was not linked")
+            message.reply(MESSAGE_NOT_LINKED.format())
+            message.mark_as_read()
+        else:
+            platform = fetched[2]
+            IGN = fetched[3]
+            message.reply(updatemasteryflair(mauthor,platform,IGN,True))
+            message.mark_as_read()
+            return
+    except Exception as e:
+        datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+        message.reply(MESSAGE_OOPS4)
+        message.mark_as_read()
+        return
+
+def flairmailcompetitive(mauthor, mbody, message):
+    try:
+        cur.execute('SELECT * FROM users WHERE NAME=? AND IGN IS NOT NULL', [mauthor])
+        fetched = cur.fetchone()
+        if not fetched:
+            datalog("\tAccount was not linked")
+            message.reply(MESSAGE_NOT_LINKED.format())
+            message.mark_as_read()
+        else:
+            platform = fetched[2]
+            IGN = fetched[3]
+            message.reply(updatecompetitiveflair(mauthor,platform,IGN,True))
+            message.mark_as_read()
+            return
+    except Exception as e:
+        datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+        message.reply(MESSAGE_OOPS4)
+        message.mark_as_read()
+        return
+
+def updatelevelflair(name, platform, IGN, log=False):
+    try:
+        current_flair = r.get_flair(SUBREDDIT, name)
+        sep = " "
+        try:
+            oldclass = current_flair['flair_css_class']
+            mclass = oldclass.split(sep, 1)[0]
+        except:
+            if log:
+                datalog("\tFlair does not exist, writing reply")
+            return(MESSAGE_ZERO_FLAIR)
+        mtext = current_flair['flair_text']
+        if platform == "PC":
+            smite._switch_endpoint(Endpoint.PALADINS_PC)
+        elif platform == "XBOX":
+            smite._switch_endpoint(Endpoint.PALADINS_XBOX)
+        elif platform == "PS4":
+            smite._switch_endpoint(Endpoint.PALADINS_PS4)
+        else:
+            smite._switch_endpoint(Endpoint.PALADINS_PC)
+        if log:
+            datalog("\tPlatform is {platform}, IGN is {IGN}, CSS Class is {flair}".format(platform=platform,IGN=IGN,flair=mclass))
+        level = ""
+        rank = ""
+        playerstats = smite.get_player(str(IGN))
+        level = playerstats[0]["Level"]
+        if log:
+            datalog("\t{user} is level {level}".format(user=IGN,level=level))
+        if level>=999:
+            rank = 999
+        elif level>=900:
+            rank = 900
+        elif level>=800:
+            rank = 800
+        elif level>=700:
+            rank = 700
+        elif level>=600:
+            rank = 600
+        elif level>=500:
+            rank = 500
+        elif level>=400:
+            rank = 400
+        elif level>=300:
+            rank = 300
+        elif level>=200:
+            rank = 200
+        elif level>=100:
+            rank = 100
+        elif level>=75:
+            rank = 75
+        elif level>=50:
+            rank = 50
+        elif level>=30:
+            rank = 30
+        elif level>=15:
+            rank = 15
+        else:
+            if log:
+                datalog("\tAccount level was not high enough")
+            return(MESSAGE_LEVEL_TOO_LOW.format(IGN=IGN,platform=platform))
+        newclass = "{mclass} level{rank}account".format(mclass=mclass,rank=rank)
+        if str(oldclass) != newclass:
+            r.set_flair(SUBREDDIT, name, mtext, newclass)
+            if log:
+                datalog("\tFlair was set, writing reply")
+        else:
+            if log:
+                datalog("\tFlair did not change, writing reply")
+        return(MESSAGE_LEVEL_SUCCESS.format(level=level))
+    except Exception as e:
+        if log:
+            datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+        return(MESSAGE_OOPS4)
+
+def updatemasteryflair(name, platform, IGN, log=False):
+    try:
+        current_flair = r.get_flair(SUBREDDIT, name)
+        sep = " "
+        try:
+            oldclass = current_flair['flair_css_class']
+            mclass = oldclass.split(sep, 1)[0]
+        except:
+            if log:
+                datalog("\tFlair does not exist, writing reply")
+            return(MESSAGE_ZERO_FLAIR)
+        mtext = current_flair['flair_text']
+        if platform == "PC":
+            smite._switch_endpoint(Endpoint.PALADINS_PC)
+        elif platform == "XBOX":
+            smite._switch_endpoint(Endpoint.PALADINS_XBOX)
+        elif platform == "PS4":
+            smite._switch_endpoint(Endpoint.PALADINS_PS4)
+        else:
+            smite._switch_endpoint(Endpoint.PALADINS_PC)
+        if log:
+            datalog("\tPlatform is {platform}, IGN is {IGN}, CSS Class is {flairclass}".format(platform=platform,IGN=IGN,flairclass=mclass))
+        searchchampion = ""
+        newclass = str(mclass)
+        mrank = ""
+        championstats = smite.get_god_ranks(str(IGN))
+        searchchampion = newclass
+        for row in championstats:
+            testchampion = str(row["champion"]).replace("'", "").replace(" ","").lower()
+            if testchampion == searchchampion:
+                mrank = row["Rank"]
+                if log:
+                    datalog("\t{user} is ranked {rank} on {champ}".format(user=IGN,rank=mrank,champ=testchampion))
+                newclass = "{champ} rank{rank}mastery".format(champ=mclass,rank=mrank)
+                if str(oldclass) != newclass:
+                    r.set_flair(SUBREDDIT, name, mtext, newclass)
+                    if log:
+                        datalog("\tFlair was set, writing reply")
+                else:
+                    if log:
+                        datalog("\tFlair did not change, writing reply")
+                return(MESSAGE_MASTERY_SUCCESS.format(rank=mrank,champion=testchampion))
+            else:
+                #Checks next Champion in list.
+                pass
+        if log:
+            datalog("\tUser Flair was not a Champion, writing reply")
+        return(MESSAGE_MASTERY_WRONGFLAIR.format(character="Champion"))
+    except Exception as e:
+        if log:
+            datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+        return(MESSAGE_OOPS4)
+
+def updatecompetitiveflair(name, platform, IGN, log=False):
+    try:
+        current_flair = r.get_flair(SUBREDDIT, name)
+        sep = " "
+        try:
+            oldclass = current_flair['flair_css_class']
+            mclass = oldclass.split(sep, 1)[0]
+        except:
+            if log:
+                datalog("\tFlair does not exist, writing reply")
+            return(MESSAGE_ZERO_FLAIR)
+        mtext = current_flair['flair_text']
+        if platform == "PC":
+            smite._switch_endpoint(Endpoint.PALADINS_PC)
+        elif platform == "XBOX":
+            smite._switch_endpoint(Endpoint.PALADINS_XBOX)
+        elif platform == "PS4":
+            smite._switch_endpoint(Endpoint.PALADINS_PS4)
+        else:
+            smite._switch_endpoint(Endpoint.PALADINS_PC)
+        if log:
+            datalog("\tPlatform is {platform}, IGN is {IGN}, CSS Class is {flairclass}".format(platform=platform,IGN=IGN,flairclass=mclass))
+        mclass = str(mclass)
+        rankInt = 0
+        rankStr = ""
+        rankFormatted = ""
+        playerstats = smite.get_player(str(IGN))
+        rankInt = playerstats[0]["Tier_Conquest"]
+        rankStr = rankingList[rankInt]
+        rankFormatted = rankingListFormatted[rankInt]
+        if log:
+            datalog("\t{user} is rank {rank}".format(user=IGN,rank=rankFormatted))
+        newclass = "{mclass} {rank}rank".format(mclass=mclass,rank=rankStr)
+        if str(oldclass) != newclass:
+            r.set_flair(SUBREDDIT, name, mtext, newclass)
+            if log:
+                datalog("\tFlair was set, writing reply")
+        else:
+            if log:
+                datalog("\tFlair did not change, writing reply")
+        return(MESSAGE_COMPETITIVE_SUCCESS.format(rank=rankFormatted))
+    except Exception as e:
+        if log:
+            datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+        return(MESSAGE_OOPS4)
+
+def linkaccounts(mauthor, mbody, message):
     try:
         platform = ""
         IGN = ""
-        current_flair = r.get_flair(SUBREDDIT, mauthor)
-        sep = " "
-        mclass = current_flair['flair_css_class'].split(sep, 1)[0]
-        mtext = current_flair['flair_text']
         try:
             platform, IGN = message.body.split('\n')
             if "pc" in platform.lower() or "xbox" in platform.lower() or "ps4" in platform.lower():
@@ -992,37 +1259,41 @@ def flairmailmastery(mauthor, mbody, message):
                 else:
                     smite._switch_endpoint(Endpoint.PALADINS_PC)
                     platform = "Default"
-            datalog("\tPlatform is {platform}, IGN is {IGN}, CSS Class is {flairclass}".format(platform=platform,IGN=IGN,flairclass=mclass))
-            searchchampion = ""
-            newclass = str(mclass)
-            mrank = ""
-            championstats = smite.get_god_ranks(str(IGN))
-            searchchampion = newclass
-            for row in championstats:
-                testchampion = str(row["champion"]).replace("'", "").replace(" ","").lower()
-                if testchampion == searchchampion:
-                    mrank = row["Rank"]
-                    datalog("\t{user} is rank {rank} on {champ}".format(user=IGN,rank=mrank,champ=testchampion))
-                    newclass = "{champ} rank{rank}mastery".format(champ=mclass,rank=mrank)
-                    r.set_flair(SUBREDDIT, mauthor, mtext, newclass)
-                    datalog("\tFlair was set, writing reply")
-                    message.reply(MESSAGE_MASTERY_SUCCESS.format(rank=mrank,champion=testchampion))
-                    message.mark_as_read()
-                    return
+            else:
+                datalog("\tInformation was not correct, writing reply")
+                message.reply(MESSAGE_DIAMOND_INCORRECT)
+                message.mark_as_read()
+                return
+            datalog("\tPlatform is {platform}, IGN is {IGN}".format(platform=platform,IGN=IGN))
+            accountdata = smite.get_player(str(IGN))
+            accountName = accountdata[0]["Name"]
+            accountID = accountdata[0]["Id"]
+            accountDate = accountdata[0]["Created_Datetime"]
+            try:
+                cur.execute('SELECT * FROM users WHERE NAME=?', [mauthor])
+                fetched = cur.fetchone()
+                if not fetched:
+                    cur.execute('INSERT INTO users VALUES(?, ?, ?, ?)', [mauthor, "", platform, IGN])
                 else:
-                    #Checks next Champion in list.
-                    pass
-            datalog("\tUser Flair was not a Champion, writing reply")
-            reply = MESSAGE_MASTERY_WRONGFLAIR.format(character="Champion")
+                    cur.execute('UPDATE users SET PLATFORM=? WHERE NAME=?', [platform, mauthor])
+                    cur.execute('UPDATE users SET IGN=? WHERE NAME=?', [IGN, mauthor])
+                sql.commit()
+            except Exception as e:
+                datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
+                message.reply(MESSAGE_OOPS3.format(IGN=IGN,platform=platform))
+                message.mark_as_read()
+                return
+            datalog("\tAccount was successfully linked, writing reply")
+            message.reply(MESSAGE_LINK_SUCCESS.format(ign=accountName,id=accountID,date=accountDate))
             message.mark_as_read()
             return
         except Exception as e:
-            datalog("\tSomething went wrong, writing reply")
+            datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
             message.reply(MESSAGE_OOPS3.format(IGN=IGN,platform=platform))
             message.mark_as_read()
             return
     except Exception as e:
-        datalog("\tSomething went wrong, writing reply")
+        datalog("\tSomething went wrong, writing reply -- Error: {e}".format(e=e))
         message.reply(MESSAGE_OOPS3.format(IGN=IGN,platform=platform))
         message.mark_as_read()
         return
@@ -1222,6 +1493,7 @@ def getMatchStats(matchID,myplatform,guruplatform):
         else:
             score1 += difference2
             score2 += difference2
+        partyList = []
         replyString = ""
         replyString += "MatchID|Time|Mode|Region|Score|Duration\n:--|:--|:--|:--|:--|:--\n"
         replyString += matchID
@@ -1230,7 +1502,12 @@ def getMatchStats(matchID,myplatform,guruplatform):
         replyString += "|"
         replyString += str(firstrow["name"]).replace(": ","") #Game Mode
         replyString += "|"
-        replyString += str(firstrow["Region"]) #Region
+        region = firstrow["Region"]
+        try:
+            region = "[" + region + "](#/flair" + regionFlagsDictionary[region] + ")"
+        except:
+            pass
+        replyString += region #Region
         replyString += "|"
         replyString += str(score1) #Score 1
         replyString += "-"
@@ -1240,17 +1517,32 @@ def getMatchStats(matchID,myplatform,guruplatform):
         replyString += ":"
         replyString += str(seconds) #Seconds
         replyString += "\n\n"
-        replyString += "[Lv] Player|Champion|Cred (CPM)|K/D/A|Dmg|Shield|Heal|Obj\n:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--\n"
+        replyString += "P|[Lv] Player|Rank|Champion|Cred (CPM)|K/D/A|Dmg|Shield|Heal|Obj\n:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--|:--\n"
         for row in info:
+            replyString += "|"
             winStr = ""
             if row["Win_Status"] == "Winner":
                 winStr = "**"
+            party = row["PartyId"]
+            if party != 0:
+                if party not in partyList:
+                    partyList.append(party)
+                party = partyList.index(party)
+                replyString += winStr
+                replyString += chr(party+65) #Party
+                replyString += winStr
+            replyString += "|"
             replyString += winStr
             replyString += "["
             replyString += str(row["Account_Level"]) #Account Level
             replyString += "] "
             replyString += str(row["playerName"]) #Account Name
             replyString += winStr
+            replyString += "|"
+            try:
+                replyString += winStr + rankingListShort[row["League_Tier"]] + winStr #Ranking
+            except:
+                pass
             replyString += "|"
             replyString += winStr
             replyString += "["
@@ -1303,7 +1595,7 @@ def getMatchStats(matchID,myplatform,guruplatform):
         datalog("writing reply")
         return(replyString)
     except:
-        replyString = "The match '{matchID}' you specified could not be found. Trying looking on ".format(matchID=matchID)
+        replyString = "The match '{matchID}' you specified could not be found. Try looking on ".format(matchID=matchID)
         replyString += "[My Paladins](https://{myplatform}mypaladins.com/match/".format(myplatform=myplatform)
         replyString += matchID
         replyString += ") or [Paladins Guru](http://paladins.guru/match/{guruplatform}/".format(guruplatform=guruplatform)
@@ -1355,11 +1647,26 @@ def checkmail():
                 #Flair Text
                 datalog("%s has requested new flair text" % (mauthor))
                 flairmailtext(mauthor, mbody, message)
+            elif any(trigger.lower() == msubject for trigger in LINKACCOUNTSUBJECTLINE) or LINKACCOUNTSUBJECTLINE==[]:
+                #Account Link
+                if SUBREDDIT == "Paladins":
+                    datalog("%s has requested an account link" % (mauthor))
+                    linkaccounts(mauthor, mbody, message)
             elif any(trigger.lower() == msubject for trigger in MASTERYSUBJECTLINE) or MASTERYSUBJECTLINE==[]:
                 #Mastery Flair
                 if SUBREDDIT == "Paladins":
                     datalog("%s has requested a mastery flair" % (mauthor))
                     flairmailmastery(mauthor, mbody, message)
+            elif any(trigger.lower() == msubject for trigger in LEVELSUBJECTLINE) or LEVELSUBJECTLINE==[]:
+                #Level Flair
+                if SUBREDDIT == "Paladins":
+                    datalog("%s has requested a level flair" % (mauthor))
+                    flairmaillevel(mauthor, mbody, message)
+            elif any(trigger.lower() == msubject for trigger in COMPETITIVESUBJECTLINE) or COMPETITIVESUBJECTLINE==[]:
+                #Competitive Flair
+                if SUBREDDIT == "Paladins":
+                    datalog("%s has requested a competitive flair" % (mauthor))
+                    flairmailcompetitive(mauthor, mbody, message)
             elif any(trigger.lower() == msubject for trigger in DIAMONDSUBJECTLINE) or DIAMONDSUBJECTLINE==[]:
                 #Diamond Flair
                 if SUBREDDIT == "Smite":
@@ -1370,6 +1677,8 @@ def checkmail():
                 if SUBREDDIT == "Smite":
                     datalog('%s has requested a Tier 5 flair' % (mauthor))
                     flairmailtier5(mauthor, mbody, message)
+            elif msubject == "test":
+                testMessage(mauthor, mbody, message)
             elif message.subject == "username mention" and message.was_comment:
                 pass
             elif message.subject == "comment reply" and message.was_comment:
@@ -1382,6 +1691,43 @@ def checkmail():
         except AttributeError:
             pass
         message.mark_as_read()
+
+def updatedatabase(pauthor,pflair):
+    try:
+        if pflair is None:
+            pflair = "none"
+        cur.execute('SELECT * FROM users WHERE NAME=?', [pauthor])
+        fetched = cur.fetchone()
+        if not fetched:
+            cur.execute('INSERT INTO users VALUES(?, ?)', [pauthor, pflair])
+            datalog("New user flair data: %s: '%s'" % (pauthor, pflair))
+        else:
+            oldflair = fetched[1]
+            if pflair != oldflair:
+                cur.execute('UPDATE users SET FLAIR=? WHERE NAME=?', [pflair, pauthor])
+                datalog("Updated user flair data: %s: '%s' > '%s'" % (pauthor, oldflair, pflair))
+        sql.commit()
+        if SUBREDDIT == "Paladins":
+            cur.execute('SELECT * FROM users WHERE NAME=? AND IGN IS NOT NULL', [pauthor])
+            fetched = cur.fetchone()
+            if fetched:
+                try:
+                    sep = " "
+                    current_flair = fetched[1].split(sep, 1)[0]
+                except:
+                    return
+                if fetched[1].endswith("account"):
+                    #Level Flair
+                    updatelevelflair(fetched[0], fetched[2], fetched[3])
+                if fetched[1].endswith("rank"):
+                    #Competitive Flair
+                    updatecompetitiveflair(fetched[0], fetched[2], fetched[3])
+                if fetched[1].endswith("mastery"):
+                    #Mastery Flair
+                    updatemasteryflair(fetched[0], fetched[2], fetched[3])
+        sql.commit()
+    except Exception as e:
+        pass
 
 def cachepost(postid):
     cur.execute('SELECT * FROM cache WHERE POSTID=?', [postid])
@@ -1408,35 +1754,25 @@ def checkpost(postid):
                 isMatch1 = re.search('(?i)match', pcontent)
                 isMatch2 = re.search('\d{8,11}', pcontent)
                 if isMatch1 and isMatch2:
-                    print("0")
                     datalog("%s requested the details of a match" % (pauthor))
-                    print("1")
                     matchID = isMatch2.group(0)
-                    print("2")
                     if matchID == "":
                         matchID = "0"
-                    print("3")
                     myplatform = ""
                     guruplatform = "pc"
-                    print("test")
-                    xb1Match = re.search('(?i)xb1|xbox', pcontent)
-                    ps4Match = re.search('(?i)ps4|playstation', pcontent)
-                    print("test1")
+                    xb1Match = re.search('(?i)xb1|xbox|match\/xb', pcontent)
+                    ps4Match = re.search('(?i)ps4|playstation|match\/ps', pcontent)
                     if xb1Match:
                         smite._switch_endpoint(Endpoint.PALADINS_XBOX)
                         myplatform = "xbox."
                         guruplatform = "xb"
-                        print("test2")
                     elif ps4Match:
                         smite._switch_endpoint(Endpoint.PALADINS_PS4)
                         myplatform = "ps4."
                         guruplatform = "ps"
-                        print("test3")
                     else:
                         smite._switch_endpoint(Endpoint.PALADINS_PC)
-                        print("test4")
-                    post.reply(getMatchStats(matchID,myplatform,guruplatform))
-                    print("test5")
+                        post.reply(getMatchStats(matchID,myplatform,guruplatform))
         isMatch = any(string in pcontent for string in starhelp)
         if isMatch:
             datalog("%s requested more information about me, writing reply" % (pauthor))
@@ -1488,17 +1824,17 @@ def scanposts():
     posts += sub.get_comments(limit=MAXPOSTS)
     for post in posts:
         try:
-            pauthor = post.author.name
-            pcontent = post.body.lower()
-            pflair = post.author_flair_css_class
-            ptext = post.author_flair_text
-            #CHECK FOR COMMANDS
-            if SUBREDDIT == "Paladins":
-                if pauthor != "PaladinsRobot":
-                    isMatch1 = re.search('(?i)match', pcontent)
-                    isMatch2 = re.search('\d{8,11}', pcontent)
-                    if isMatch1 and isMatch2:
-                        if cachepost(post.id):
+            if cachepost(post.id):
+                pauthor = post.author.name
+                pcontent = post.body.lower()
+                pflair = post.author_flair_css_class
+                ptext = post.author_flair_text
+                #CHECK FOR COMMANDS
+                if SUBREDDIT == "Paladins":
+                    if pauthor != "PaladinsRobot":
+                        isMatch1 = re.search('(?i)match', pcontent)
+                        isMatch2 = re.search('\d{8,11}', pcontent)
+                        if isMatch1 and isMatch2:
                             datalog("%s requested the details of a match" % (pauthor))
                             matchID = isMatch2.group(0)
                             if matchID == "":
@@ -1518,51 +1854,34 @@ def scanposts():
                             else:
                                 smite._switch_endpoint(Endpoint.PALADINS_PC)
                             post.reply(getMatchStats(matchID,myplatform,guruplatform))
-            isMatch = any(string in pcontent for string in starhelp)
-            if isMatch:
-                if cachepost(post.id):
+                isMatch = any(string in pcontent for string in starhelp)
+                if isMatch:
                     datalog("%s requested more information about me, writing reply" % (pauthor))
                     post.reply(MESSAGE_STARINFO)
-            #if SUBREDDIT == "Smite":
-                #isMatch = any(string in pcontent for string in seasontickethelp)
-                #if isMatch:
-                    #if cachepost(post.id):
+                #if SUBREDDIT == "Smite":
+                    #isMatch = any(string in pcontent for string in seasontickethelp)
+                    #if isMatch:
                         #datalog("%s requested help with the Season Ticket, writing reply" % (pauthor))
                         #post.reply(seasonticketmaths())
-            #CHECK FOR PRO PLAYERS
-            if SUBREDDIT == "Smite":
-                if "\n"+pauthor+"\n" in open("splproplayers.txt").read():
-                    if not pflair.endswith(" VER"):
-                        datalog("Changing %s's flair from '%s' to '%s VER'" % (pauthor, pflair, pflair))
-                        r.set_flair(SUBREDDIT, pauthor, ptext, pflair + " VER")
-            #CHECK FOR HIREZ PERSONNEL
-            if post.author_flair_css_class == "hirez":
-                plinkflairclass = post.submission.link_flair_css_class
-                plinkflairtext = post.submission.link_flair_text
-                if not plinkflairtext.endswith(" | HIREZ RESPONDED"):
-                    datalog("%s made a comment. Changing %s flair" % (pauthor, plinkflairtext))
-                    plinkflairtext = plinkflairtext + " | HIREZ RESPONDED"
-                    r.set_flair(SUBREDDIT, post.submission, plinkflairtext, plinkflairclass)
-            #COLLECT FLAIR DATA
-            try:
-                #autochangeflair(pauthor, pflair, ptext)
-                if pflair is None:
-                    pflair = "none"
-                cur.execute('SELECT * FROM users WHERE NAME=?', [pauthor])
-                fetched = cur.fetchone()
-                if not fetched:
-                    cur.execute('INSERT INTO users VALUES(?, ?)', [pauthor, pflair])
-                    datalog("New user flair data: %s: '%s'" % (pauthor, pflair))
-                else:
-                    oldflair = fetched[1]
-                    if pflair != oldflair:
-                        cur.execute('UPDATE users SET FLAIR=? WHERE NAME=?', [pflair, pauthor])
-                        datalog("Updated user flair data: %s: '%s' > '%s'" % (pauthor, oldflair, pflair))
-                sql.commit()
-            except Exception as e:
-                pass
+                #CHECK FOR PRO PLAYERS
+                if SUBREDDIT == "Smite":
+                    if "\n"+pauthor+"\n" in open("splproplayers.txt").read():
+                        if not pflair.endswith(" VER"):
+                            datalog("Changing %s's flair from '%s' to '%s VER'" % (pauthor, pflair, pflair))
+                            r.set_flair(SUBREDDIT, pauthor, ptext, pflair + " VER")
+                #CHECK FOR HIREZ PERSONNEL
+                if post.author_flair_css_class == "hirez":
+                    plinkflairclass = post.submission.link_flair_css_class
+                    plinkflairtext = post.submission.link_flair_text
+                    if not plinkflairtext.endswith(" | HIREZ RESPONDED"):
+                        datalog("%s made a comment. Changing %s flair" % (pauthor, plinkflairtext))
+                        plinkflairtext = plinkflairtext + " | HIREZ RESPONDED"
+                        r.set_flair(SUBREDDIT, post.submission, plinkflairtext, plinkflairclass)
+                #COLLECT AND UPDATE FLAIR DATA
+                updatedatabase(pauthor,pflair)
         except Exception as e:
             pass
+    #ADD FLAIR DATA TO .TXT FILE
     if SUBREDDIT == "Smite":
         flairfile = open(SMITEFLAIRPRINTFILE, 'w')
     if SUBREDDIT == "Paladins":
@@ -1590,11 +1909,14 @@ def scanposts():
         print(user[0] + ': ' + user[1], file=flairfile)
     flairfile.close()
 
+def testMessage(mauthor, mbody, message):
+    print(mbody)
+
 def testAPIfunction():
     print("Testing the API...")
     try:
         smite._switch_endpoint(Endpoint.PALADINS_PC)
-        info = smite.get_match_details("135625939")
+        info = smite.get_player("edcellwarrior")
         print(info)
     except Exception as e:
         print("The API failed - %s" % (e))
@@ -1611,7 +1933,7 @@ while True:
         sql.close()
         #--------------------------
         paladinsLogin()
-        #checkpost("t1_di5z11b")
+        #checkpost("t1_dm1hkfh")
         checkmail()
         scanposts()
         updateOperationalStatus()
